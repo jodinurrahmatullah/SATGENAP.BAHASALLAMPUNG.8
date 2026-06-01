@@ -1,0 +1,779 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Camera, AlertTriangle, CheckCircle, XCircle, Clock, List, ChevronLeft, ChevronRight, Send, AlertCircle, CameraOff } from 'lucide-react';
+
+// ==========================================
+// PENGATURAN URL SPREADSHEET
+// MASUKKAN URL GOOGLE APPS SCRIPT ANDA DI SINI!
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxisikEItxs4XwzS20jF773QwI4MURnWLRrpvLnDS31Z9CjNup5wWE91v5uoGY5NVWs_g/exec"; 
+// ==========================================
+
+// --- DATA SOAL (50 Soal) ---
+const questionsData = Array.from({ length: 50 }, (_, i) => {
+  const topics = [
+    { q: "Apa yang dimaksud dengan 'Piil Pesenggiri' dalam budaya Lampung?", o: ["Prinsip kehormatan dan harga diri", "Tarian tradisional", "Makanan khas", "Pakaian adat"], a: 0, ex: "Piil Pesenggiri adalah falsafah hidup masyarakat Lampung yang menjunjung tinggi kehormatan dan harga diri." },
+    { q: "Berapa jumlah induk huruf (kelabai surat) dalam aksara Lampung?", o: ["18", "20", "22", "24"], a: 1, ex: "Aksara Lampung memiliki 20 induk huruf atau kelabai surat." },
+    { q: "Apa arti dari semboyan 'Sang Bumi Ruwa Jurai'?", o: ["Satu bumi dua tradisi/adat", "Satu bumi satu adat", "Dua bumi satu darah", "Dua bumi dua adat"], a: 0, ex: "Sang Bumi Ruwa Jurai berarti satu bumi (wilayah Lampung) yang didiami oleh dua jurai/adat (Pepadun dan Saibatin)." },
+    { q: "Siger bagi masyarakat Lampung melambangkan...", o: ["Kekayaan", "Kehormatan wanita dan mahkota", "Senjata perang", "Alat musik"], a: 1, ex: "Siger adalah mahkota pengantin wanita yang menjadi simbol kehormatan masyarakat Lampung." },
+    { q: "Tari Cangget biasanya ditarikan pada saat acara...", o: ["Panen raya", "Perang", "Pernikahan adat (Gawi)", "Pemakaman"], a: 2, ex: "Tari Cangget adalah tarian adat yang sering ditampilkan pada acara pernikahan (Begawi)." },
+    { q: "Kata 'Nyak' dalam dialek A berarti...", o: ["Kamu", "Dia", "Saya", "Mereka"], a: 2, ex: "Nyak (Dialek A) atau Nyam (Dialek O) berarti Saya." },
+    { q: "Kata 'Niku' / 'Pusewang' digunakan untuk menyebut...", o: ["Saya", "Kamu", "Dia", "Kalian"], a: 1, ex: "Niku berarti 'Kamu' untuk memanggil orang kedua tunggal." },
+    { q: "Anak huruf yang terletak di atas induk huruf disebut...", o: ["Keleniah", "Bicek", "Tekelubang", "Semua benar"], a: 3, ex: "Keleniah, bicek, ulan, tekelubang, rejenjung, datasan adalah anak huruf yang letaknya di atas." },
+    { q: "Tanda baca 'Nengen' dalam aksara Lampung berfungsi untuk...", o: ["Mematikan huruf", "Memberi suara O", "Memberi suara I", "Memberi suara U"], a: 0, ex: "Nengen adalah tanda mati (pemati huruf) dalam aksara Lampung." },
+    { q: "Rumah adat tradisional Lampung disebut...", o: ["Nuwo Sesat", "Rumah Gadang", "Joglo", "Honai"], a: 0, ex: "Nuwo Sesat atau Sesat Agung adalah rumah adat masyarakat Lampung." },
+    { q: "Sebutan pemimpin adat dalam masyarakat Lampung Saibatin adalah...", o: ["Punyimbang", "Suttan / Sai Batin", "Kepala Desa", "Mangkubumi"], a: 1, ex: "Saibatin dipimpin oleh satu pemimpin yang disebut Suttan." },
+    { q: "Sebutan pemimpin adat dalam masyarakat Lampung Pepadun adalah...", o: ["Punyimbang", "Raja", "Dalem", "Pangeran"], a: 0, ex: "Dalam masyarakat Pepadun, kepemimpinan berbentuk majemuk yang dipegang oleh Punyimbang." },
+    { q: "Alat musik petik tradisional Lampung adalah...", o: ["Angklung", "Gamolan", "Cetiek / Gamolan Pekhing", "Sasando"], a: 2, ex: "Gamolan pekhing atau Cetiek adalah alat musik tradisional bambu yang dipukul/dipetik." },
+    { q: "Kain tenun khas Lampung yang ditenun dengan benang emas disebut...", o: ["Batik", "Songket", "Tapis", "Ulos"], a: 2, ex: "Kain Tapis adalah pakaian wanita suku Lampung yang berbentuk kain sarung dengan sulaman benang emas." },
+    { q: "Apa nama senjata tradisional Lampung?", o: ["Keris", "Badik / Terapang", "Mandau", "Kujang"], a: 1, ex: "Badik atau Terapang adalah senjata tradisional khas masyarakat Lampung." },
+    { q: "Julukan bagi provinsi Lampung adalah...", o: ["Kota Kembang", "Kota Pelajar", "Kota Tapis Berseri / Sang Bumi Ruwa Jurai", "Kota Hujan"], a: 2, ex: "Lampung dikenal dengan julukan Sang Bumi Ruwa Jurai atau Kota Tapis Berseri (Bandar Lampung)." },
+    { q: "Sikap 'Nemui Nyimah' dalam adat Lampung artinya...", o: ["Berani berkorban", "Suka menerima tamu dan bersilaturahmi", "Bekerja keras", "Gotong royong"], a: 1, ex: "Nemui nyimah berarti ramah tamah, suka menerima tamu dan memberi dengan ikhlas." },
+    { q: "Sikap 'Nengah Nyappur' artinya...", o: ["Mudah bergaul dalam masyarakat", "Menyendiri", "Berkuasa", "Menyerah"], a: 0, ex: "Nengah nyappur bermakna suka bergaul and toleran terhadap sesama dalam kehidupan bermasyarakat." },
+    { q: "Sikap 'Sakai Sambayan' mencerminkan nilai...", o: ["Kegigihan", "Gotong royong / tolong menolong", "Kekuasaan", "Keberanian"], a: 1, ex: "Sakai sambayan berarti saling tolong-menolong dan gotong royong." },
+    { q: "Hewan endemik yang dilindungi di Taman Nasional Way Kambas Lampung adalah...", o: ["Orangutan", "Komodo", "Gajah", "Harimau"], a: 2, ex: "Taman Nasional Way Kambas di Lampung terkenal sebagai pusat pelatihan dan perlindungan Gajah Sumatera." }
+  ];
+
+  const template = topics[i % topics.length]; 
+  return {
+    id: i + 1,
+    question: `${i + 1}. ${template.q}`,
+    options: template.o,
+    correctOption: template.a,
+    explanation: template.ex
+  };
+});
+
+// --- KOMPONEN MODAL NOTIFIKASI ---
+const CustomModal = ({ isOpen, title, message, onClose, onConfirm, type = "warning", confirmText = "Mengerti", cancelText = "Batal" }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 transform transition-all scale-100">
+        <div className="flex items-center justify-center mb-4">
+          {type === "warning" ? (
+            <AlertTriangle className="text-yellow-500 w-12 h-12" />
+          ) : type === "danger" ? (
+            <AlertCircle className="text-red-500 w-12 h-12" />
+          ) : (
+            <CheckCircle className="text-green-500 w-12 h-12" />
+          )}
+        </div>
+        <h3 className="text-lg font-bold text-center mb-2 text-gray-800">{title}</h3>
+        <p className="text-center text-xs md:text-sm text-gray-600 mb-6 leading-relaxed">{message}</p>
+        
+        <div className="flex gap-3">
+          {onConfirm && (
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 rounded-xl font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 transition text-xs md:text-sm"
+            >
+              {cancelText}
+            </button>
+          )}
+          <button
+            onClick={onConfirm || onClose}
+            className={`flex-1 py-3 rounded-xl font-bold text-white transition text-xs md:text-sm shadow-sm ${
+              type === 'warning' ? 'bg-yellow-500 hover:bg-yellow-600' :
+              type === 'danger' ? 'bg-red-500 hover:bg-red-600' :
+              'bg-green-600 hover:bg-green-700'
+            }`}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default function App() {
+  const [step, setStep] = useState('setup');
+  const [student, setStudent] = useState({ name: '', class: '8 A' });
+  const [answers, setAnswers] = useState({});
+  const [currentQIndex, setCurrentQIndex] = useState(0);
+  
+  const DURATION = 90 * 60;
+  const [timeLeft, setTimeLeft] = useState(DURATION);
+  
+  const [warnings, setWarnings] = useState(0);
+  const [violations, setViolations] = useState([]);
+  
+  const [showQList, setShowQList] = useState(false);
+  const [modalConfig, setModalConfig] = useState({ 
+    isOpen: false, 
+    title: '', 
+    message: '', 
+    type: 'warning', 
+    confirmText: 'Mengerti',
+    cancelText: 'Batal',
+    onConfirm: null 
+  });
+
+  const videoRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [streamActive, setStreamActive] = useState(null);
+  const [cameraErrorDetail, setCameraErrorDetail] = useState('');
+
+  useEffect(() => {
+    if (step === 'exam' && videoRef.current && streamActive) {
+      videoRef.current.srcObject = streamActive;
+      videoRef.current.play().catch(err => {
+        console.warn("Gagal memainkan video stream otomatis:", err);
+      });
+    }
+  }, [step, streamActive]);
+
+  // ==========================================
+  // LOGIK ANTI KECURANGAN
+  // ==========================================
+  useEffect(() => {
+    if (step !== 'exam') return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        recordViolation("Siswa meninggalkan tab/aplikasi ujian.");
+      }
+    };
+
+    const handleBlur = () => {
+      recordViolation("Siswa membuka notifikasi atau aplikasi lain.");
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleBlur);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleBlur);
+    };
+  }, [step, warnings]);
+
+  const recordViolation = (reason) => {
+    setWarnings((prev) => {
+      const newWarnings = prev + 1;
+      const timeStr = new Date().toLocaleTimeString('id-ID');
+      setViolations(v => [...v, `[${timeStr}] ${reason}`]);
+      
+      if (newWarnings >= 3) {
+        showModal("Batas Pelanggaran!", "Anda telah melakukan kecurangan sebanyak 3 kali. Ujian otomatis ditutup.", "danger", "Selesai Ujian", () => {
+          closeModal();
+          submitExam(true);
+        });
+        setTimeout(() => {
+          submitExam(true);
+        }, 3000);
+      } else {
+        showModal(
+          "Deteksi Kecurangan!", 
+          `Dilarang meninggalkan layar ujian! Peringatan Anda saat ini: ${newWarnings}/3. Jika mencapai 3 kali, ujian akan selesai otomatis secara paksa.`, 
+          "warning"
+        );
+      }
+      return newWarnings;
+    });
+  };
+
+  const showModal = (title, message, type = "warning", confirmText = "Mengerti", onConfirm = null, cancelText = "Batal") => {
+    setModalConfig({ isOpen: true, title, message, type, confirmText, cancelText, onConfirm });
+  };
+
+  const closeModal = () => {
+    setModalConfig(prev => ({ ...prev, isOpen: false }));
+  };
+
+  // ==========================================
+  // LOGIK TIMER (90 Menit)
+  // ==========================================
+  useEffect(() => {
+    if (step !== 'exam') return;
+    if (timeLeft <= 0) {
+      submitExam(true);
+      return;
+    }
+    const timer = setInterval(() => {
+      setTimeLeft(prev => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [step, timeLeft]);
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  // ==========================================
+  // PEREKAMAN KAMERA PORTABEL & RINGAN
+  // ==========================================
+  const requestCameraPermission = async () => {
+    try {
+      const constraints = {
+        video: {
+          facingMode: "user",
+          width: { ideal: 160 },
+          height: { ideal: 120 },
+          frameRate: { ideal: 10 }
+        },
+        audio: false
+      };
+      
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      setStreamActive(stream);
+      
+      let options = { mimeType: 'video/webm;codecs=vp8' };
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options = { mimeType: 'video/webm' };
+      }
+      
+      try {
+        const mediaRecorder = new MediaRecorder(stream, options);
+        mediaRecorderRef.current = mediaRecorder;
+        recordedChunksRef.current = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            recordedChunksRef.current.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = () => {
+          if (recordedChunksRef.current.length > 0) {
+            const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+            saveRecordingToDevice(blob);
+          }
+          stream.getTracks().forEach(track => track.stop());
+        };
+
+        mediaRecorder.start(5000);
+        setIsRecording(true);
+      } catch (recErr) {
+        console.warn("Perekam Media tidak didukung penuh:", recErr);
+      }
+      
+      return true;
+    } catch (err) {
+      console.error("Gagal kamera:", err);
+      setCameraErrorDetail(err.message || 'Izin kamera ditolak atau perangkat tidak memiliki kamera.');
+      return false;
+    }
+  };
+
+  const handleStartProcess = async (e) => {
+    e.preventDefault();
+    if (!student.name.trim()) {
+      showModal("Nama Kosong", "Silakan masukkan nama lengkap terlebih dahulu.", "warning");
+      return;
+    }
+    
+    const success = await requestCameraPermission();
+    if (success) {
+      enterFullscreen();
+      setStep('exam');
+    } else {
+      setStep('camera-warning');
+    }
+  };
+
+  const proceedWithoutCamera = () => {
+    enterFullscreen();
+    setStep('exam');
+  };
+
+  const enterFullscreen = () => {
+    try {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen();
+      }
+    } catch (e) {
+      console.log("Layar penuh tidak didukung.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (err) {
+        console.error("Gagal stop recorder:", err);
+      }
+      setIsRecording(false);
+    } else if (streamActive) {
+      streamActive.getTracks().forEach(track => track.stop());
+    }
+  };
+
+  const saveRecordingToDevice = (blob) => {
+    try {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      document.body.appendChild(a);
+      a.style = 'display: none';
+      a.href = url;
+      const date = new Date().toISOString().slice(0, 10);
+      a.download = `Rekaman_Ujian_${student.name.replace(/\s+/g, '_')}_${student.class.replace(/\s+/g, '')}.webm`;
+      a.click();
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+    } catch (err) {
+      console.error("Gagal unduh rekaman:", err);
+    }
+  };
+
+  // ==========================================
+  // PENGIRIMAN DATA KE SPREADSHEET (DISETEL KHUSUS)
+  // ==========================================
+  const handleAnswer = (qIndex, oIndex) => {
+    setAnswers(prev => ({ ...prev, [qIndex]: oIndex }));
+  };
+
+  const attemptSubmit = () => {
+    const answeredCount = Object.keys(answers).length;
+    const unansweredCount = questionsData.length - answeredCount;
+
+    if (unansweredCount > 0) {
+      showModal(
+        "Soal Belum Lengkap", 
+        `Peringatan: Masih ada ${unansweredCount} soal yang belum Anda jawab. Apakah Anda yakin ingin menyelesaikan dan mengirimkan hasil ujian sekarang?`, 
+        "warning",
+        "Ya, Selesai",
+        () => {
+          closeModal();
+          submitExam(false);
+        },
+        "Periksa Kembali"
+      );
+    } else {
+      showModal(
+        "Selesai Ujian?",
+        "Apakah Anda yakin ingin mengirim semua jawaban Anda sekarang? Hasil tidak dapat diubah kembali setelah dikirim.",
+        "success",
+        "Ya, Selesai",
+        () => {
+          closeModal();
+          submitExam(false);
+        },
+        "Batal"
+      );
+    }
+  };
+
+  const submitExam = async (isForced = false) => {
+    stopRecording();
+    try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e){}
+    
+    let correct = 0;
+    let wrong = 0;
+    questionsData.forEach((q, idx) => {
+      if (answers[idx] === q.correctOption) {
+        correct++;
+      } else {
+        wrong++;
+      }
+    });
+
+    const finalScore = correct * 2;
+    const finalViolations = violations.length > 0 ? violations : ["Siswa tertib (Tidak ada pelanggaran)"];
+    
+    // Format payload data JSON
+    const payload = {
+      name: student.name,
+      className: student.class,
+      score: finalScore,
+      correctCount: correct,
+      wrongCount: wrong,
+      violations: finalViolations
+    };
+
+    // Mode 'no-cors' mengirimkan data secara senyap (silent) melewati pembatasan keamanan browser
+    try {
+      fetch(SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(() => console.log("Sinkronisasi latar belakang berhasil dikirim."))
+      .catch(err => console.warn("Gagal sinkronisasi background:", err));
+    } catch (e) {
+      console.error("Koneksi gagal:", e);
+    }
+
+    setStep('result');
+    if (isForced) {
+      showModal("Selesai Otomatis", "Ujian Anda telah diakhiri oleh sistem karena batas pelanggaran atau waktu pengerjaan telah habis.", "danger");
+    }
+  };
+
+  // ==========================================
+  // RENDER SEKTOR HALAMAN
+  // ==========================================
+
+  // 1. Layar Form Registrasi
+  if (step === 'setup') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4 font-sans">
+        <CustomModal {...modalConfig} onClose={closeModal} />
+        <div className="bg-white p-6 md:p-8 rounded-2xl shadow-xl max-w-md w-full border border-blue-100 animate-fade-in">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Camera size={28} />
+            </div>
+            <h1 className="text-xl font-bold text-gray-800">SUMATIF AKHIR TAHUN</h1>
+            <p className="text-sm font-semibold text-blue-600">SMPN 38 BANDAR LAMPUNG</p>
+            <p className="text-xs text-gray-500 mt-1">Mata Pelajaran: Bahasa Lampung Kelas 8</p>
+          </div>
+
+          <div className="bg-yellow-50 text-yellow-800 text-xs p-3 rounded-xl mb-5 border border-yellow-200">
+            <span className="font-bold block mb-1">📢 PETUNJUK ANTI KECURANGAN:</span>
+            <ul className="list-disc pl-4 space-y-1">
+              <li>Kamera ponsel akan merekam aktivitas wajah siswa.</li>
+              <li>Aplikasi mendeteksi ganti tab / keluar dari layar aplikasi.</li>
+              <li>Maksimal pelanggaran adalah 3 kali sebelum ujian ditutup paksa.</li>
+            </ul>
+          </div>
+
+          <form onSubmit={handleStartProcess} className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Nama Siswa</label>
+              <input 
+                type="text" 
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm transition"
+                placeholder="Tulis nama lengkap Anda..."
+                value={student.name}
+                onChange={e => setStudent({ ...student, name: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Pilih Kelas</label>
+              <select 
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm transition"
+                value={student.class}
+                onChange={e => setStudent({ ...student, class: e.target.value })}
+              >
+                <option value="8 A">Kelas 8 A</option>
+                <option value="8 B">Kelas 8 B</option>
+                <option value="8 C">Kelas 8 C</option>
+                <option value="8 D">Kelas 8 D</option>
+              </select>
+            </div>
+            <button 
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition text-sm flex justify-center items-center gap-2 shadow-md"
+            >
+              Mulai Ujian <ChevronRight size={18}/>
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Layar Toleransi Kamera
+  if (step === 'camera-warning') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 font-sans">
+        <div className="bg-white p-6 rounded-2xl shadow-lg max-w-md w-full border border-red-100">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CameraOff size={32} />
+            </div>
+            <h2 className="text-lg font-bold text-gray-800">Kamera Bermasalah / Izin Ditolak</h2>
+            <p className="text-xs text-gray-500 mt-1 mb-4">Detail: <code className="bg-gray-100 px-1 py-0.5 rounded text-red-500">{cameraErrorDetail}</code></p>
+            
+            <div className="bg-blue-50 text-blue-800 text-xs p-4 rounded-xl text-left mb-6 space-y-2">
+              <p className="font-bold">✓ Kebijakan Toleransi Ujian:</p>
+              <p>Demi kelancaran pengerjaan, Anda **tetap diperbolehkan** mengikuti ujian tanpa perekaman kamera aktif.</p>
+              <p className="font-semibold text-red-600">Catatan: Fitur anti-kecurangan ganti tab & sistem peringatan 3x tetap berjalan ketat selama ujian.</p>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={proceedWithoutCamera}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm transition"
+              >
+                Tetap Masuk & Kerjakan Ujian
+              </button>
+              <button
+                onClick={() => setStep('setup')}
+                className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2.5 rounded-xl text-xs transition"
+              >
+                Coba Aktifkan Kamera Lagi
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Layar Pengerjaan Soal (Exam)
+  if (step === 'exam') {
+    const q = questionsData[currentQIndex];
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col font-sans select-none">
+        <CustomModal {...modalConfig} onClose={closeModal} />
+        
+        {/* Header Bar */}
+        <header className="bg-white shadow-sm sticky top-0 z-10 px-4 py-2.5 flex justify-between items-center border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowQList(true)}
+              className="p-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition"
+              title="Lihat Semua Soal"
+            >
+              <List size={20} />
+            </button>
+            <span className="font-bold text-gray-700 text-sm md:text-base">Soal {currentQIndex + 1}/{questionsData.length}</span>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {/* Kamera Preview Mini */}
+            <div className="w-12 h-12 md:w-16 md:h-16 bg-gray-900 rounded-lg overflow-hidden relative border border-gray-300 shadow-inner flex items-center justify-center">
+              {streamActive ? (
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline 
+                  muted 
+                  className="w-full h-full object-cover transform -scale-x-100"
+                />
+              ) : (
+                <CameraOff size={16} className="text-gray-500" />
+              )}
+              {isRecording && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />}
+            </div>
+            
+            {/* Timer */}
+            <div className={`flex items-center gap-1 font-mono font-bold text-sm md:text-base px-2.5 py-1.5 rounded-lg ${timeLeft < 300 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-blue-100 text-blue-700'}`}>
+              <Clock size={16} />
+              {formatTime(timeLeft)}
+            </div>
+          </div>
+        </header>
+
+        {/* Notifikasi Pelanggaran Real-time */}
+        {warnings > 0 && (
+          <div className="bg-red-50 py-2 px-4 text-center text-red-600 text-xs font-bold border-b border-red-200 flex justify-center items-center gap-1.5 animate-pulse">
+            <AlertTriangle size={14} />
+            Siswa Terdeteksi Melakukan Pelanggaran! Peringatan: {warnings}/3
+          </div>
+        )}
+
+        {/* Konten Utama Soal */}
+        <main className="flex-1 p-4 md:p-6 max-w-xl mx-auto w-full flex flex-col justify-between">
+          <div className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-gray-200 flex-1 mb-4 flex flex-col justify-start">
+            <h3 className="text-sm md:text-base font-semibold text-gray-800 leading-relaxed mb-4">
+              {q.question}
+            </h3>
+            
+            <div className="space-y-2.5">
+              {q.options.map((opt, oIdx) => (
+                <div 
+                  key={oIdx}
+                  onClick={() => handleAnswer(currentQIndex, oIdx)}
+                  className={`p-3 border rounded-xl cursor-pointer transition text-xs md:text-sm flex items-center gap-3.5
+                    ${answers[currentQIndex] === oIdx 
+                      ? 'border-blue-500 bg-blue-50/50' 
+                      : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50'}`}
+                >
+                  <div className={`w-5 h-5 rounded-full border flex flex-shrink-0 items-center justify-center
+                    ${answers[currentQIndex] === oIdx ? 'border-blue-500 bg-blue-500' : 'border-gray-300'}`}>
+                    {answers[currentQIndex] === oIdx && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
+                  </div>
+                  <span className="text-gray-700">{opt}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Navigasi Control Bawah */}
+          <div className="flex gap-3 mt-2">
+            <button 
+              onClick={() => setCurrentQIndex(prev => Math.max(0, prev - 1))}
+              disabled={currentQIndex === 0}
+              className="flex-1 py-3 bg-gray-200 text-gray-700 font-bold rounded-xl text-xs disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+            >
+              <ChevronLeft size={16}/> Sebelumnya
+            </button>
+            
+            {currentQIndex === questionsData.length - 1 ? (
+              <button 
+                onClick={attemptSubmit}
+                className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md shadow-green-600/30"
+              >
+                Kirim Ujian <Send size={14}/>
+              </button>
+            ) : (
+              <button 
+                onClick={() => setCurrentQIndex(prev => Math.min(questionsData.length - 1, prev + 1))}
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow"
+              >
+                Selanjutnya <ChevronRight size={16}/>
+              </button>
+            )}
+          </div>
+        </main>
+
+        {/* Modal Laci Samping (Daftar Soal) */}
+        {showQList && (
+          <div className="fixed inset-0 bg-black/50 z-40 flex justify-end">
+            <div className="w-72 max-w-full bg-white h-full shadow-2xl flex flex-col animate-slide-in-right">
+              <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+                <h3 className="font-bold text-sm text-gray-700">Daftar Nomor Soal</h3>
+                <button onClick={() => setShowQList(false)} className="p-1 text-gray-400 hover:text-red-500 rounded-full hover:bg-gray-100">
+                  <XCircle size={22} />
+                </button>
+              </div>
+              <div className="p-3 overflow-y-auto grid grid-cols-5 gap-2 flex-1 content-start">
+                {questionsData.map((_, idx) => {
+                  const isAnswered = answers[idx] !== undefined;
+                  const isCurrent = currentQIndex === idx;
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => { setCurrentQIndex(idx); setShowQList(false); }}
+                      className={`h-9 rounded-lg font-bold text-xs border transition flex items-center justify-center
+                        ${isCurrent ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
+                        ${isAnswered ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-gray-600 border-gray-300'}
+                      `}
+                    >
+                      {idx + 1}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="p-4 border-t bg-gray-50 flex flex-col gap-1.5 text-xs">
+                <div className="flex items-center gap-2"><div className="w-3.5 h-3.5 bg-blue-600 rounded"></div> Sudah Terisi</div>
+                <div className="flex items-center gap-2"><div className="w-3.5 h-3.5 bg-white border border-gray-300 rounded"></div> Belum Terisi</div>
+                <button onClick={attemptSubmit} className="mt-3 w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-sm">
+                  Kirim Jawaban Sekarang
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 4. Layar Hasil & Pembahasan Mandiri
+  if (step === 'result') {
+    let correct = 0;
+    questionsData.forEach((q, idx) => { if (answers[idx] === q.correctOption) correct++; });
+    const finalScore = correct * 2;
+
+    return (
+      <div className="min-h-screen bg-gray-50 p-4 font-sans pb-10">
+        <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200">
+          
+          {/* Hasil Atas */}
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-center text-white">
+            <CheckCircle size={48} className="mx-auto mb-2 text-green-300" />
+            <h1 className="text-xl font-bold">Ujian Berhasil Dikirim</h1>
+            <p className="text-xs opacity-90 mt-1">{student.name} ({student.class})</p>
+            <p className="text-[11px] mt-2 bg-blue-800/60 inline-block px-3 py-1 rounded-full text-blue-100">
+              {streamActive ? "Berkas rekaman ujian otomatis terunduh di folder Download." : "Ujian disubmit tanpa rekaman kamera."}
+            </p>
+          </div>
+
+          {/* Statistik Skor */}
+          <div className="p-4 md:p-6 grid grid-cols-4 gap-2 border-b text-center">
+            <div className="p-2.5 bg-gray-50 rounded-xl">
+              <p className="text-[10px] text-gray-500 font-bold uppercase">Nilai</p>
+              <p className="text-xl font-extrabold text-blue-700">{finalScore}</p>
+            </div>
+            <div className="p-2.5 bg-green-50 rounded-xl">
+              <p className="text-[10px] text-green-600 font-bold uppercase">Benar</p>
+              <p className="text-xl font-extrabold text-green-700">{correct}</p>
+            </div>
+            <div className="p-2.5 bg-red-50 rounded-xl">
+              <p className="text-[10px] text-red-600 font-bold uppercase">Salah</p>
+              <p className="text-xl font-extrabold text-red-700">{50 - correct}</p>
+            </div>
+            <div className="p-2.5 bg-yellow-50 rounded-xl">
+              <p className="text-[10px] text-yellow-600 font-bold uppercase">Pelanggaran</p>
+              <p className="text-xl font-extrabold text-yellow-600">{warnings}</p>
+            </div>
+          </div>
+
+          {/* Detil Pelanggaran */}
+          {violations.length > 0 ? (
+            <div className="p-4 border-b bg-red-50/50">
+              <h3 className="font-bold text-xs text-red-700 flex items-center gap-1.5 mb-2">
+                <AlertTriangle size={16}/> Catatan Pelanggaran Selama Ujian:
+              </h3>
+              <ul className="list-decimal pl-4 text-xs text-red-600 space-y-1">
+                {violations.map((v, i) => <li key={i}>{v}</li>)}
+              </ul>
+            </div>
+          ) : (
+            <div className="p-3 border-b bg-green-50/30 text-center text-xs text-green-700 font-semibold">
+              Selamat! Anda tertib mengikuti ujian tanpa pelanggaran.
+            </div>
+          )}
+
+          {/* Review Soal & Jawaban */}
+          <div className="p-4 md:p-6">
+            <h3 className="font-bold text-sm text-gray-800 mb-4 border-l-4 border-blue-500 pl-2">Review Soal & Kunci Jawaban</h3>
+            <div className="space-y-4">
+              {questionsData.map((q, idx) => {
+                const userAns = answers[idx];
+                const isCorrect = userAns === q.correctOption;
+                const notAnswered = userAns === undefined;
+
+                return (
+                  <div key={idx} className={`p-4 rounded-xl border text-xs md:text-sm ${isCorrect ? 'border-green-200 bg-green-50/20' : 'border-red-200 bg-red-50/20'}`}>
+                    <div className="flex gap-2.5 items-start">
+                      <div className="mt-0.5">
+                        {isCorrect ? <CheckCircle className="text-green-600 flex-shrink-0" size={18}/> : <XCircle className="text-red-500 flex-shrink-0" size={18}/>}
+                      </div>
+                      <div className="w-full">
+                        <p className="font-semibold text-gray-800">{q.question}</p>
+                        
+                        <div className="mt-2.5 space-y-1.5">
+                          {q.options.map((opt, oIdx) => {
+                            let optionStyle = "text-gray-600";
+                            let statusText = null;
+                            
+                            if (oIdx === q.correctOption) {
+                              optionStyle = "text-green-700 font-bold bg-green-100/60 px-2 py-0.5 rounded";
+                              statusText = "(Jawaban Benar)";
+                            } else if (oIdx === userAns && !isCorrect) {
+                              optionStyle = "text-red-600 line-through bg-red-100/60 px-2 py-0.5 rounded";
+                              statusText = "(Jawaban Anda)";
+                            }
+
+                            return (
+                              <p key={oIdx} className={`text-xs ${optionStyle}`}>
+                                - {opt} <span className="text-[10px] opacity-80">{statusText}</span>
+                              </p>
+                            );
+                          })}
+                          {notAnswered && <p className="text-xs font-bold text-red-500 italic mt-1">Anda tidak menjawab soal ini.</p>}
+                        </div>
+                        
+                        {/* Alasan / Penjelasan */}
+                        <div className="mt-3 p-2.5 bg-white border border-gray-100 rounded-lg shadow-xs">
+                          <p className="font-bold text-[11px] text-blue-700">Pembahasan:</p>
+                          <p className="text-gray-600 text-[11px] mt-0.5">{q.explanation}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
